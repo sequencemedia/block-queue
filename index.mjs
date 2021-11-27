@@ -10,19 +10,20 @@ import {
 
 import fetch, { Headers } from 'node-fetch'
 
-import getAccessToken from './access-token.mjs'
+import getAccessToken from '#block-queue/access-token'
 
 import {
   BLOCK_QUEUE,
   getBlockQueue,
   setBlockQueue
-} from './block-queue.mjs'
+} from '#block-queue/block-queue'
 
-import './queue.mjs'
+import blocking from '#block-queue/blocking'
+import blockingQueue from '#block-queue/blocking/queue'
 
 const {
   env: {
-    DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token',
+    DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:common,@sequencemedia/block-queue:blocking,@sequencemedia/block-queue:blocking/queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token',
     BEARER_TOKEN
   } = {}
 } = process
@@ -129,11 +130,23 @@ async function likingUsers (id) {
 async function app (id = '1464198586669973505') {
   info('app')
 
+  log('Getting the access token ...')
+
   await getAccessToken()
+
+  log('Got the access token.')
+
+  log('Getting the user\'s blocking list ...')
+
+  await blocking()
+
+  log('Got the user\'s blocking list.')
 
   try {
     await tweets(id)
     await likingUsers(id)
+
+    await blockingQueue()
   } catch (e) {
     log(e)
   }

@@ -1,7 +1,5 @@
 import debug from 'debug'
 
-import OAuth from 'oauth-1.0a'
-import crypto from 'crypto'
 import querystring from 'querystring'
 import readline from 'readline'
 
@@ -10,11 +8,15 @@ import {
   writeFile
 } from 'fs/promises'
 
+import {
+  getAuthorization
+} from '#block-queue/common'
+
 import fetch, { Headers } from 'node-fetch'
 
 const {
   env: {
-    DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token'
+    DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:common,@sequencemedia/block-queue:blocking,@sequencemedia/block-queue:blocking/queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token'
   } = {}
 } = process
 
@@ -25,32 +27,11 @@ const info = debug('@sequencemedia/block-queue:access-token:info')
 
 log('`block-queue` is awake')
 
-const {
-  env: {
-    CONSUMER_KEY,
-    CONSUMER_SECRET
-  } = {}
-} = process
-
 const ACCESS_TOKEN = './.access-token'
 
 const API_REQUEST_TOKEN = 'https://api.twitter.com/oauth/request_token'
 const API_ACCESS_TOKEN = 'https://api.twitter.com/oauth/access_token'
 const API_AUTHORIZE = 'https://api.twitter.com/oauth/authorize'
-
-export const oauth = OAuth({
-  consumer: {
-    key: CONSUMER_KEY,
-    secret: CONSUMER_SECRET
-  },
-  signature_method: 'HMAC-SHA1',
-  hash_function: (baseString, key) => (
-    crypto
-      .createHmac('sha1', key)
-      .update(baseString)
-      .digest('base64')
-  )
-})
 
 const READLINE = readline
   .createInterface({
@@ -58,7 +39,7 @@ const READLINE = readline
     output: process.stdout
   })
 
-function setAuthorizationURLToIO (url = new URL()) {
+function setAuthorizationUrlToIO (url = new URL()) {
   READLINE.write(`Get an authorization PIN at the URL: ${url.toString()}\n`)
 }
 
@@ -70,6 +51,12 @@ function getAuthorizationPINFromIO () {
   )
 }
 
+function getRequestTokenHeaders (url, method = 'POST') {
+  return new Headers({
+    Authorization: getAuthorization(url, method)
+  })
+}
+
 export async function getRequestToken () {
   info('getRequestToken')
 
@@ -77,21 +64,16 @@ export async function getRequestToken () {
 
   url.searchParams.set('auth_callback', 'oob')
 
-  const {
-    Authorization
-  } = oauth.toHeader(oauth.authorize({
-    url: url.toString(),
-    method: 'POST'
-  }))
-
-  const headers = new Headers({
-    Authorization
-  })
-
-  const response = await fetch(url, { headers, method: 'POST' })
+  const response = await fetch(url, { headers: getRequestTokenHeaders(url, 'POST'), method: 'POST' })
   const responseData = await response.text()
 
   return querystring.parse(responseData)
+}
+
+function getAccessTokenHeaders (url, method = 'POST') {
+  return new Headers({
+    Authorization: getAuthorization(url, method)
+  })
 }
 
 export async function getAccessToken (oauthToken, oauthVerifier) {
@@ -99,21 +81,10 @@ export async function getAccessToken (oauthToken, oauthVerifier) {
 
   const url = new URL(API_ACCESS_TOKEN)
 
-  const {
-    Authorization
-  } = oauth.toHeader(oauth.authorize({
-    url: url.toString(),
-    method: 'POST'
-  }))
-
   url.searchParams.set('oauth_token', oauthToken)
   url.searchParams.set('oauth_verifier', oauthVerifier)
 
-  const headers = new Headers({
-    Authorization
-  })
-
-  const response = await fetch(url, { headers, method: 'POST' })
+  const response = await fetch(url, { headers: getAccessTokenHeaders(url, 'POST'), method: 'POST' })
   const responseData = await response.text()
 
   return querystring.parse(responseData)
@@ -123,7 +94,9 @@ export async function getAccessTokenFromFS () {
   info('getAccessTokenFromFS')
 
   const fileData = await readFile(ACCESS_TOKEN, 'utf8')
-  return JSON.parse(fileData)
+  const accessToken = JSON.parse(fileData)
+
+  return accessToken
 }
 
 export async function getAccessTokenFromIO () {
@@ -139,19 +112,21 @@ export async function getAccessTokenFromIO () {
 
   url.searchParams.set('oauth_token', oauthToken)
 
-  setAuthorizationURLToIO(url)
+  setAuthorizationUrlToIO(url)
 
   const oauthVerifier = await getAuthorizationPINFromIO()
 
   const accessToken = await getAccessToken(oauthToken, oauthVerifier.trim())
 
-  const fileData = JSON.stringify(accessToken, null, 2)
+  const fileData = JSON.stringify(accessToken) // , null, 2)
   await writeFile(ACCESS_TOKEN, fileData, 'utf8')
 
   return accessToken
 }
 
-export default async () => {
+export default async function execute () {
+  info('execute')
+
   let accessToken
 
   try {
