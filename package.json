@@ -32,10 +32,10 @@
     "eslint-plugin-promise": "^5.1.1"
   },
   "imports": {
-    "#block-queue/common": "./common.mjs",
-    "#block-queue/access-token": "./access-token.mjs",
-    "#block-queue/block-queue": "./block-queue.mjs",
-    "#block-queue/blocking": "./blocking.mjs",
-    "#block-queue/blocking/queue": "./blocking/queue.mjs"
+    "#block-queue/common": "./src/common.mjs",
+    "#block-queue/access-token": "./src/access-token.mjs",
+    "#block-queue/block-queue": "./src/block-queue.mjs",
+    "#block-queue/blocking": "./src/blocking.mjs",
+    "#block-queue/blocking/queue": "./src/blocking/queue.mjs"
   }
 }
