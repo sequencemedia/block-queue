@@ -145,8 +145,28 @@ export async function getAccessTokenFromIO () {
 
   const accessToken = await getAccessToken(oauthToken, oauthVerifier.trim())
 
-  const fileData = JSON.stringify(accessToken)
+  const fileData = JSON.stringify(accessToken, null, 2)
   await writeFile(ACCESS_TOKEN, fileData, 'utf8')
+
+  return accessToken
+}
+
+export default async () => {
+  let accessToken
+
+  try {
+    accessToken = await getAccessTokenFromFS()
+  } catch (e) {
+    const {
+      code
+    } = e
+
+    if (code === 'ENOENT') {
+      accessToken = await getAccessTokenFromIO()
+    } else {
+      throw e
+    }
+  }
 
   return accessToken
 }

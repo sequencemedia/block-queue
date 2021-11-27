@@ -10,6 +10,8 @@ import {
 
 import fetch, { Headers } from 'node-fetch'
 
+import getAccessToken from './access-token.mjs'
+
 import {
   BLOCK_QUEUE,
   getBlockQueue,
@@ -126,6 +128,8 @@ async function likingUsers (id) {
 
 async function app (id = '1464198586669973505') {
   info('app')
+
+  await getAccessToken()
 
   try {
     await tweets(id)

@@ -8,10 +8,8 @@ import fetch, { Headers } from 'node-fetch'
 
 import chokidar from 'chokidar'
 
-import {
-  oauth,
-  getAccessTokenFromFS,
-  getAccessTokenFromIO
+import getAccessToken, {
+  oauth
 } from './access-token.mjs'
 
 import {
@@ -90,21 +88,7 @@ export default exec(`touch ${BLOCK_QUEUE}`, () => {
         const blockQueue = await getBlockQueue()
 
         if (blockQueue.length) {
-          let accessToken
-          try {
-            accessToken = await getAccessTokenFromFS()
-          } catch (e) {
-            const {
-              code
-            } = e
-
-            if (code === 'ENOENT') {
-              accessToken = await getAccessTokenFromIO()
-            } else {
-              throw e
-            }
-          }
-
+          const accessToken = await getAccessToken()
           const url = new URL(API_USERS_BLOCKING.replace(':id', ID))
           const id = blockQueue.shift()
 
@@ -113,19 +97,6 @@ export default exec(`touch ${BLOCK_QUEUE}`, () => {
           } catch (e) {
             log(e)
           }
-
-          /*
-          const response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url), body: getUsersBlockingPayload(id), method: 'POST' })
-          const responseData = await response.json()
-
-          if (Reflect.has(responseData, 'data')) {
-            const {
-              blocking
-            } = Reflect.get(responseData, 'data')
-
-            if (blocking) await setBlockQueue(blockQueue)
-          }
-          */
         }
 
         await setBlockQueue(blockQueue)

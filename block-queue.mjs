@@ -22,7 +22,6 @@ log('`block-queue` is awake')
 
 const truthy = (v) => Boolean(v)
 const dedupe = (a, v) => a.includes(v) ? a : a.concat(v)
-// const numeric = (a, o) => Number(a) - Number(o)
 
 export async function getBlockQueue () {
   info('getBlockQueue')
@@ -32,8 +31,7 @@ export async function getBlockQueue () {
   return fileData
     .split(String.fromCharCode(10))
     .filter(truthy)
-    .reduce(dedupe, []) /*
-    .sort(numeric) */
+    .reduce(dedupe, [])
 }
 
 export async function setBlockQueue (blockQueue = []) {
@@ -41,8 +39,7 @@ export async function setBlockQueue (blockQueue = []) {
 
   const fileData = blockQueue
     .filter(truthy)
-    .reduce(dedupe, []) /*
-    .sort(numeric) */
+    .reduce(dedupe, [])
     .join(String.fromCharCode(10))
 
   await writeFile(BLOCK_QUEUE, fileData, 'utf8')
