@@ -63,67 +63,75 @@ export default function execute () {
 
   return (
     new Promise((resolve) => {
-      exec(`touch ${BLOCK_QUEUE}`, function postChildProcess () {
+      exec(`touch ${BLOCK_QUEUE}`, function postTouchBlockQueue () {
         let TIMEOUT = null
 
-        resolve(
-          chokidar.watch(BLOCK_QUEUE)
-            .on('change', async function handleChange (filePath) {
-              info('change')
+        async function handleTimeout () {
+          info('handleTimeout')
 
-              if (TIMEOUT) {
-                clearTimeout(TIMEOUT)
-                TIMEOUT = null
-              }
+          const blockQueue = await getBlockQueue()
 
-              log(`The file "${filePath}" has been changed.`)
+          if (blockQueue.length) {
+            const accessToken = await getAccessToken()
+            const url = new URL(API_USERS_BLOCKING.replace(':id', ID))
+            const id = blockQueue.shift()
 
-              TIMEOUT = setTimeout(async function handleTimeout () {
-                info('handleTimeout')
+            try {
+              const response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url, 'POST'), body: getUsersBlockingPayload(id), method: 'POST' })
+              const responseData = await response.json()
 
-                const blockQueue = await getBlockQueue()
+              log(responseData)
+            } catch (e) {
+              log(e)
+            }
+          }
 
-                if (blockQueue.length) {
-                  const accessToken = await getAccessToken()
-                  const url = new URL(API_USERS_BLOCKING.replace(':id', ID))
-                  const id = blockQueue.shift()
+          await setBlockQueue(blockQueue)
 
-                  try {
-                    const response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url, 'POST'), body: getUsersBlockingPayload(id), method: 'POST' })
-                    const responseData = await response.json()
+          TIMEOUT = null
+        }
 
-                    log(responseData)
-                  } catch (e) {
-                    log(e)
-                  }
-                }
+        async function handleChange (filePath) {
+          info('change')
 
-                await setBlockQueue(blockQueue)
+          if (TIMEOUT) {
+            clearTimeout(TIMEOUT)
+            TIMEOUT = null
+          }
 
-                TIMEOUT = null
-              }, RATE)
-            })
-            .on('unlink', async function handleUnlink (filePath) {
-              info('unlink')
+          log(`The file "${filePath}" has been changed.`)
 
-              if (TIMEOUT) {
-                clearTimeout(TIMEOUT)
-                TIMEOUT = null
-              }
+          TIMEOUT = setTimeout(handleTimeout, RATE)
+        }
 
-              log(`The file "${filePath}" has been unlinked.`)
-            })
-            .on('error', function handleError ({ message }) {
-              info('error')
+        async function handleUnlink (filePath) {
+          info('unlink')
 
-              if (TIMEOUT) {
-                clearTimeout(TIMEOUT)
-                TIMEOUT = null
-              }
+          if (TIMEOUT) {
+            clearTimeout(TIMEOUT)
+            TIMEOUT = null
+          }
 
-              log(`Error in watcher. The message was "${message}"`)
-            })
-        )
+          log(`The file "${filePath}" has been unlinked.`)
+        }
+
+        function handleError ({ message }) {
+          info('error')
+
+          if (TIMEOUT) {
+            clearTimeout(TIMEOUT)
+            TIMEOUT = null
+          }
+
+          log(`Error in watcher. The message was "${message}"`)
+        }
+
+        const watcher = chokidar.watch(BLOCK_QUEUE)
+          .on('change', handleChange)
+          .on('unlink', handleUnlink)
+          .on('error', handleError)
+
+        resolve(watcher)
       })
     })
   )
