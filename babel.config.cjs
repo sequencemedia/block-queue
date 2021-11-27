@@ -2,7 +2,7 @@ const debug = require('debug')
 
 const {
   env: {
-    DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token'
+    DEBUG = '@sequencemedia/block-queue'
   } = {}
 } = process
 

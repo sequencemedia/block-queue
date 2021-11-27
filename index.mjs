@@ -92,8 +92,8 @@ async function tweets (id) {
   }
 }
 
-async function likingUsers (id) {
-  info('likingUsers')
+async function tweetsLikingUsers (id) {
+  info('tweetsLikingUsers')
 
   const url = new URL(API_LIKING_USERS.replace(':id', id))
 
@@ -122,7 +122,7 @@ async function likingUsers (id) {
 
       if (type === INVALID_REQUEST) log('"INVALID_REQUEST"')
 
-      throw new Error(`Error in \`likingUsers\`. The message was "${getErrorMessage(responseData)}"`)
+      throw new Error(`Error in \`tweetsLikingUsers\`. The message was "${getErrorMessage(responseData)}"`)
     }
   }
 }
@@ -144,7 +144,7 @@ async function app (id = '1464198586669973505') {
 
   try {
     await tweets(id)
-    await likingUsers(id)
+    await tweetsLikingUsers(id)
 
     await blockingQueue()
   } catch (e) {
