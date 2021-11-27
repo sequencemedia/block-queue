@@ -132,7 +132,7 @@ export default function execute () {
 
   return (
     new Promise((resolve) => {
-      exec(`touch ${BLOCK_QUEUE}`, function blockQueue () {
+      exec(`touch ${BLOCK_QUEUE}`, function watch () {
         const watcher = chokidar.watch(BLOCK_QUEUE)
           .on('change', handleChange)
           .on('unlink', handleUnlink)
