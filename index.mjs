@@ -18,7 +18,7 @@ import {
   setBlockQueue
 } from '#block-queue/block-queue'
 
-import blocking from '#block-queue/blocking'
+// import blocking from '#block-queue/blocking'
 import blockingQueue from '#block-queue/blocking/queue'
 
 const {
@@ -127,26 +127,27 @@ async function tweetsLikingUsers (id) {
   }
 }
 
-async function app (id = '1464198586669973505') {
+async function app (id = '1456425970806763520') {
   info('app')
 
   log('Getting the access token ...')
 
   await getAccessToken()
 
-  log('Got the access token.')
+  log('Getting the access token succeeded.')
 
+  await blockingQueue()
+
+  /*
   log('Getting the user\'s blocking list ...')
 
   await blocking()
 
-  log('Got the user\'s blocking list.')
+  log('Getting the user\'s blocking list succeeded.') */
 
   try {
     await tweets(id)
     await tweetsLikingUsers(id)
-
-    await blockingQueue()
   } catch (e) {
     log(e)
   }

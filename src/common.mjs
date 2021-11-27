@@ -37,7 +37,7 @@ export const oauth = OAuth({
   )
 })
 
-export function getAuthorization ({ oauth_token: oauthToken, oauth_token_secret: oauthTokenSecret }, url, method) {
+export function getAuthorization (url, method) {
   info('getAuthorization')
 
   const {

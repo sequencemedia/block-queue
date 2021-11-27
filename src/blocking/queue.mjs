@@ -61,71 +61,78 @@ function getUsersBlockingPayload (targetUserId) {
 export default function execute () {
   info('execute')
 
+  let TIMEOUT = null
+
+  async function handleTimeout () {
+    info('handleTimeout')
+
+    const blockQueue = await getBlockQueue()
+
+    if (blockQueue.length) {
+      const accessToken = await getAccessToken()
+      const url = new URL(API_USERS_BLOCKING.replace(':id', ID))
+      const id = blockQueue.shift()
+
+      log(`Blocking user "${id}" ...`)
+
+      try {
+        const response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url, 'POST'), body: getUsersBlockingPayload(id), method: 'POST' })
+        const {
+          data: {
+            blocking = false
+          } = {}
+        } = await response.json()
+
+        if (blocking) log(`Blocking user "${id}" succeeded.`)
+        else {
+          log(`Blocking user "${id}" failed.`)
+        }
+      } catch ({ message }) {
+        log(`Blocking user "${id}" failed with message "${message}".`)
+      }
+    }
+
+    await setBlockQueue(blockQueue)
+
+    TIMEOUT = null
+  }
+
+  function handleChange (filePath) {
+    info('change')
+
+    if (TIMEOUT) {
+      clearTimeout(TIMEOUT)
+      TIMEOUT = null
+    }
+
+    TIMEOUT = setTimeout(handleTimeout, RATE)
+  }
+
+  function handleUnlink (filePath) {
+    info('unlink')
+
+    if (TIMEOUT) {
+      clearTimeout(TIMEOUT)
+      TIMEOUT = null
+    }
+
+    log(`The file "${filePath}" has been unlinked.`)
+  }
+
+  function handleError ({ message }) {
+    info('error')
+
+    if (TIMEOUT) {
+      clearTimeout(TIMEOUT)
+      TIMEOUT = null
+    }
+
+    log(`Error in watcher. The message was "${message}"`)
+  }
+
   return (
     new Promise((resolve) => {
-      exec(`touch ${BLOCK_QUEUE}`, function postTouchBlockQueue () {
-        let TIMEOUT = null
-
-        async function handleTimeout () {
-          info('handleTimeout')
-
-          const blockQueue = await getBlockQueue()
-
-          if (blockQueue.length) {
-            const accessToken = await getAccessToken()
-            const url = new URL(API_USERS_BLOCKING.replace(':id', ID))
-            const id = blockQueue.shift()
-
-            try {
-              const response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url, 'POST'), body: getUsersBlockingPayload(id), method: 'POST' })
-              const responseData = await response.json()
-
-              log(responseData)
-            } catch (e) {
-              log(e)
-            }
-          }
-
-          await setBlockQueue(blockQueue)
-
-          TIMEOUT = null
-        }
-
-        async function handleChange (filePath) {
-          info('change')
-
-          if (TIMEOUT) {
-            clearTimeout(TIMEOUT)
-            TIMEOUT = null
-          }
-
-          log(`The file "${filePath}" has been changed.`)
-
-          TIMEOUT = setTimeout(handleTimeout, RATE)
-        }
-
-        async function handleUnlink (filePath) {
-          info('unlink')
-
-          if (TIMEOUT) {
-            clearTimeout(TIMEOUT)
-            TIMEOUT = null
-          }
-
-          log(`The file "${filePath}" has been unlinked.`)
-        }
-
-        function handleError ({ message }) {
-          info('error')
-
-          if (TIMEOUT) {
-            clearTimeout(TIMEOUT)
-            TIMEOUT = null
-          }
-
-          log(`Error in watcher. The message was "${message}"`)
-        }
-
+      exec(`touch ${BLOCK_QUEUE}`, function blockQueue () {
         const watcher = chokidar.watch(BLOCK_QUEUE)
           .on('change', handleChange)
           .on('unlink', handleUnlink)

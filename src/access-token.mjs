@@ -52,6 +52,8 @@ function getAuthorizationPINFromIO () {
 }
 
 function getRequestTokenHeaders (url, method = 'POST') {
+  info('getRequestTokenHeaders')
+
   return new Headers({
     Authorization: getAuthorization(url, method)
   })
@@ -71,6 +73,8 @@ export async function getRequestToken () {
 }
 
 function getAccessTokenHeaders (url, method = 'POST') {
+  info('getAccessTokenHeaders')
+
   return new Headers({
     Authorization: getAuthorization(url, method)
   })
