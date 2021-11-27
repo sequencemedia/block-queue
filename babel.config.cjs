@@ -1,6 +1,14 @@
 const debug = require('debug')
 
-const log = debug('block-queue')
+const {
+  env: {
+    DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token'
+  } = {}
+} = process
+
+debug.enable(DEBUG)
+
+const log = debug('@sequencemedia/block-queue')
 
 const {
   env: {
