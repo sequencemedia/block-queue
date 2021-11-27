@@ -18,11 +18,6 @@ import {
 
 import './queue.mjs'
 
-const log = debug('@sequencemedia/block-queue')
-const info = debug('@sequencemedia/block-queue:info')
-
-log('`block-queue` is awake')
-
 const {
   env: {
     DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token',
@@ -31,6 +26,11 @@ const {
 } = process
 
 debug.enable(DEBUG)
+
+const log = debug('@sequencemedia/block-queue')
+const info = debug('@sequencemedia/block-queue:info')
+
+log('`block-queue` is awake')
 
 const INVALID_REQUEST = 'https://api.twitter.com/2/problems/invalid-request'
 
@@ -60,13 +60,7 @@ async function tweets (id) {
   const response = await fetch(url, { headers })
   const responseData = await response.json()
 
-  if (Reflect.has(responseData, 'type')) {
-    const type = Reflect.get(responseData, 'type')
-
-    if (type === INVALID_REQUEST) {
-      throw new Error(`Error in \`tweets\`. The message was "${getErrorMessage(responseData)}"`)
-    }
-  } else if (Reflect.has(responseData, 'data')) {
+  if (Reflect.has(responseData, 'data')) {
     const data = Reflect.get(responseData, 'data')
 
     if (Reflect.has(data, 'author_id')) {
@@ -81,6 +75,17 @@ async function tweets (id) {
 
       log('User queued')
     }
+  } else {
+    /**
+     *  Errors
+     */
+    if (Reflect.has(responseData, 'type')) {
+      const type = Reflect.get(responseData, 'type')
+
+      if (type === INVALID_REQUEST) log('"INVALID_REQUEST"')
+
+      throw new Error(`Error in \`tweets\`. The message was "${getErrorMessage(responseData)}"`)
+    }
   }
 }
 
@@ -92,13 +97,7 @@ async function likingUsers (id) {
   const response = await fetch(url, { headers })
   const responseData = await response.json()
 
-  if (Reflect.has(responseData, 'type')) {
-    const type = Reflect.get(responseData, 'type')
-
-    if (type === INVALID_REQUEST) {
-      throw new Error(`Error in \`likingUsers\`. The message was "${getErrorMessage(responseData)}"`)
-    }
-  } else if (Reflect.has(responseData, 'data')) {
+  if (Reflect.has(responseData, 'data')) {
     const data = Reflect.get(responseData, 'data')
 
     if (Array.isArray(data)) {
@@ -111,6 +110,17 @@ async function likingUsers (id) {
 
       log(`${data.length} liker(s) queued`)
     }
+  } else {
+    /**
+     *  Errors
+     */
+    if (Reflect.has(responseData, 'type')) {
+      const type = Reflect.get(responseData, 'type')
+
+      if (type === INVALID_REQUEST) log('"INVALID_REQUEST"')
+
+      throw new Error(`Error in \`likingUsers\`. The message was "${getErrorMessage(responseData)}"`)
+    }
   }
 }
 
@@ -120,8 +130,8 @@ async function app (id = '1464198586669973505') {
   try {
     await tweets(id)
     await likingUsers(id)
-  } catch ({ code = 'No error code defined', message = 'No error message defined' }) {
-    log(code, message)
+  } catch (e) {
+    log(e)
   }
 }
 

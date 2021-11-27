@@ -12,6 +12,14 @@ import {
 
 import fetch, { Headers } from 'node-fetch'
 
+const {
+  env: {
+    DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token'
+  } = {}
+} = process
+
+debug.enable(DEBUG)
+
 const log = debug('@sequencemedia/block-queue:access-token')
 const info = debug('@sequencemedia/block-queue:access-token:info')
 
@@ -50,13 +58,16 @@ const READLINE = readline
     output: process.stdout
   })
 
-function input (prompt) {
-  return new Promise((resolve) => {
-    READLINE.question(prompt, (out) => {
-      READLINE.close()
-      resolve(out)
+function setAuthorizationURLToIO (url = new URL()) {
+  READLINE.write(`Get an authorization PIN at the URL: ${url.toString()}\n`)
+}
+
+function getAuthorizationPINFromIO () {
+  return (
+    new Promise((resolve) => {
+      READLINE.question('Enter the authorization PIN: ', resolve)
     })
-  })
+  )
 }
 
 export async function getRequestToken () {
@@ -128,9 +139,9 @@ export async function getAccessTokenFromIO () {
 
   url.searchParams.set('oauth_token', oauthToken)
 
-  console.log('Please go here and authorize:', url.toString())
+  setAuthorizationURLToIO(url)
 
-  const oauthVerifier = await input('Paste the PIN here: ')
+  const oauthVerifier = await getAuthorizationPINFromIO()
 
   const accessToken = await getAccessToken(oauthToken, oauthVerifier.trim())
 

@@ -4,7 +4,7 @@ import {
   exec
 } from 'child_process'
 
-import /* fetch, */ { Headers } from 'node-fetch'
+import fetch, { Headers } from 'node-fetch'
 
 import chokidar from 'chokidar'
 
@@ -20,6 +20,14 @@ import {
   setBlockQueue
 } from './block-queue.mjs'
 
+const {
+  env: {
+    DEBUG = '@sequencemedia/block-queue,@sequencemedia/block-queue:queue,@sequencemedia/block-queue:block-queue,@sequencemedia/block-queue:access-token'
+  } = {}
+} = process
+
+debug.enable(DEBUG)
+
 const log = debug('@sequencemedia/block-queue:queue')
 const info = debug('@sequencemedia/block-queue:queue:info')
 
@@ -33,7 +41,7 @@ const {
 
 const API_USERS_BLOCKING = 'https://api.twitter.com/2/users/:id/blocking'
 
-const RATE = 900000 / 50
+const RATE = (((1000 * 60) * 60) / 4) / 50 /* Fifty every fifteen minutes */
 
 function getUsersBlockingHeaders ({ oauth_token: oauthToken, oauth_token_secret: oauthTokenSecret }, url) {
   info('getUsersBlockingHeaders')
@@ -69,21 +77,6 @@ export default exec(`touch ${BLOCK_QUEUE}`, () => {
     .on('change', async function handleChange (filePath) {
       info('change')
 
-      let accessToken
-      try {
-        accessToken = await getAccessTokenFromFS()
-      } catch (e) {
-        const {
-          code
-        } = e
-
-        if (code === 'ENOENT') {
-          accessToken = await getAccessTokenFromIO()
-        } else {
-          throw e
-        }
-      }
-
       if (TIMEOUT) {
         clearTimeout(TIMEOUT)
         TIMEOUT = null
@@ -97,21 +90,47 @@ export default exec(`touch ${BLOCK_QUEUE}`, () => {
         const blockQueue = await getBlockQueue()
 
         if (blockQueue.length) {
-          const url = new URL(API_USERS_BLOCKING.replace(':id', ID))
-          const id = blockQueue.pop()
+          let accessToken
+          try {
+            accessToken = await getAccessTokenFromFS()
+          } catch (e) {
+            const {
+              code
+            } = e
 
-          /**
-           *  Currently just for logging because the app is in Twitter jail
-           */
-          getUsersBlockingHeaders(accessToken, url) && getUsersBlockingPayload(id)
+            if (code === 'ENOENT') {
+              accessToken = await getAccessTokenFromIO()
+            } else {
+              throw e
+            }
+          }
+
+          const url = new URL(API_USERS_BLOCKING.replace(':id', ID))
+          const id = blockQueue.shift()
+
+          try {
+            await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url), body: getUsersBlockingPayload(id), method: 'POST' })
+          } catch (e) {
+            log(e)
+          }
 
           /*
-           *  const response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url), body: getUsersBlockingPayload(id), method: 'POST' })
-           *  const responseData = await response.json()
-           *  log(responseData)
-           */
-          await setBlockQueue(blockQueue)
+          const response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url), body: getUsersBlockingPayload(id), method: 'POST' })
+          const responseData = await response.json()
+
+          if (Reflect.has(responseData, 'data')) {
+            const {
+              blocking
+            } = Reflect.get(responseData, 'data')
+
+            if (blocking) await setBlockQueue(blockQueue)
+          }
+          */
         }
+
+        await setBlockQueue(blockQueue)
+
+        TIMEOUT = null
       }, RATE)
     })
     .on('unlink', async function handleUnlink (filePath) {
