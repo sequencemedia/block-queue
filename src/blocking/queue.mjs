@@ -75,8 +75,21 @@ export default function execute () {
 
       log(`Blocking user "${id}" ...`)
 
+      let response
+      let responseData
       try {
-        const response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url, 'POST'), body: getUsersBlockingPayload(id), method: 'POST' })
+        response = await fetch(url, { headers: getUsersBlockingHeaders(accessToken, url, 'POST'), body: getUsersBlockingPayload(id), method: 'POST' })
+
+        if (String(response.headers.get('Content-Type')).startsWith('application/json')) {
+          responseData = await response.json()
+        } else {
+          responseData = (
+            await response.text()
+          ).trim()
+
+          throw new Error('Invalid response type')
+        }
+
         const {
           data: {
             blocking = false
@@ -88,7 +101,7 @@ export default function execute () {
           log(`Blocking user "${id}" failed.`)
         }
       } catch ({ message }) {
-        log(`Blocking user "${id}" failed with message "${message}".`)
+        log(`Blocking user "${id}" failed with message "${message}". Response was "${responseData}"`)
       }
     }
 
